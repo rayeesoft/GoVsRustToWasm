@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Go-PBN 图片处理</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+    }
+
+    canvas {
+      border: 1px solid black;
+      margin: 10px;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Go-PBN 图片处理应用</h1>
+  <input type="file" id="upload" accept="image/*">
+  <br><br>
+  <div>
+    <h2>原始图片</h2>
+    <canvas id="inputCanvas"></canvas>
+  </div>
+  <div>
+    <h2>处理后的图片</h2>
+    <canvas id="outputCanvas"></canvas>
+  </div>
+  <script src="wasm_exec.js"></script>
+  <script>
+    const go = new Go();
+
+    if ('instantiateStreaming' in WebAssembly) {
+      WebAssembly.instantiateStreaming(fetch('main.wasm'), go.importObject).then((result) => {
+        go.run(result.instance);
+      });
+    } else {
+      fetch('main.wasm').then(response =>
+        response.arrayBuffer()
+      ).then(bytes =>
+        WebAssembly.instantiate(bytes, go.importObject)
+      ).then((result) => {
+        go.run(result.instance);
+      });
+    }
+
+    document.getElementById('upload').addEventListener('change', async (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+
+      img.onload = async () => {
+        const inputCanvas = document.getElementById('inputCanvas');
+        const outputCanvas = document.getElementById('outputCanvas');
+        const inputCtx = inputCanvas.getContext('2d');
+        const outputCtx = outputCanvas.getContext('2d');
+
+        // 设置 Canvas 大小为图片大小
+        inputCanvas.width = img.width;
+        inputCanvas.height = img.height;
+        outputCanvas.width = img.width;
+        outputCanvas.height = img.height;
+
+        // 将图片绘制到输入 Canvas
+        inputCtx.drawImage(img, 0, 0);
+
+        // 获取输入 Canvas 的图像数据
+        const imageData = inputCtx.getImageData(0, 0, img.width, img.height);
+        const data = imageData.data;
+
+        // 调用 Go 的 processImage 函数
+        console.time("processImage");
+        const processedData = window.processImage(data, img.width, img.height);
+        console.timeEnd("processImage");
+
+        if (processedData.length === 0) {
+          console.error("图像处理失败：数据长度不匹配");
+          return;
+        }
+
+        // 创建新的 ImageData 对象用于输出 Canvas
+        const outputImageData = new ImageData(
+          new Uint8ClampedArray(processedData),
+          img.width,
+          img.height
+        );
+
+        // 将处理后的图像数据绘制到输出 Canvas
+        outputCtx.putImageData(outputImageData, 0, 0);
+
+        // 释放对象 URL
+        URL.revokeObjectURL(url);
+      };
+
+      img.src = url;
+    });
+  </script>
+</body>
+
+</html>
