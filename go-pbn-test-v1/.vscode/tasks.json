@@ -1,0 +1,27 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build WASM",
+            "type": "shell",
+            "command": "go",
+            "args": [
+                "build",
+                "-o",
+                "../web/main.wasm",
+                "main.go"
+            ],
+            "options": {
+                "env": {
+                    "GOOS": "js",
+                    "GOARCH": "wasm"
+                }
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": []
+        }
+    ]
+}

@@ -1,0 +1,64 @@
+<!-- web/index.html -->
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Go-PBN 图片处理</title>
+</head>
+
+<body>
+  <h1>Go-PBN 图片处理应用</h1>
+  <input type="file" id="upload" accept="image/*">
+  <br><br>
+  <canvas id="canvas"></canvas>
+
+  <script src="wasm_exec.js"></script>
+  <script>
+    const go = new Go();
+
+    if ('instantiateStreaming' in WebAssembly) {
+      WebAssembly.instantiateStreaming(fetch('main.wasm'), go.importObject).then((result) => {
+        go.run(result.instance);
+      });
+    } else {
+      fetch('main.wasm').then(response =>
+        response.arrayBuffer()
+      ).then(bytes =>
+        WebAssembly.instantiate(bytes, go.importObject)
+      ).then((result) => {
+        go.run(result.instance);
+      });
+    }
+
+    document.getElementById('upload').addEventListener('change', async (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      try {
+        // 调用 Go 的 processImage 函数，等待处理完成
+        console.time("processImage");
+        const processedData = await window.processImage(file);
+        console.timeEnd("processImage");
+
+        // 创建 Blob 并显示在 Canvas 上
+        const blob = new Blob([processedData], { type: 'image/png' });
+        const url = URL.createObjectURL(blob);
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.getElementById('canvas');
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0);
+          URL.revokeObjectURL(url);
+        };
+        img.src = url;
+      } catch (error) {
+        console.error("图片处理失败:", error);
+      }
+    });
+  </script>
+</body>
+
+</html>

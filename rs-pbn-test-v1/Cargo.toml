@@ -1,0 +1,13 @@
+[package]
+name = "rs-pbn"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+wasm-bindgen = "0.2"
+image = "0.25.2"
+web-sys = { version = "0.3", features = ["FileReader", "File", "ProgressEvent", "console"] }
+js-sys = "0.3"
